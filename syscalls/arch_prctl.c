@@ -54,75 +54,21 @@
 #define ARCH_MAP_VDSO_32	0x2002
 #define ARCH_MAP_VDSO_64	0x2003
 
-#ifdef CONFIG_ARCH_X86_64
-/*
- * Move this to a ukplat_ API call
- * This works now for bare metal only
- */
-
-#define X86_MSR_FS_BASE         0xc0000100
-#define X86_MSR_GS_BASE         0xc0000101
-
-static inline void rdmsr(unsigned int msr, __u32 *lo, __u32 *hi)
-{
-	asm volatile("rdmsr" : "=a"(*lo), "=d"(*hi)
-			     : "c"(msr));
-}
-
-static inline __u64 rdmsrl(unsigned int msr)
-{
-	__u32 lo, hi;
-
-	rdmsr(msr, &lo, &hi);
-	return ((__u64) lo | (__u64) hi << 32);
-}
-
-static inline void wrmsr(unsigned int msr, __u32 lo, __u32 hi)
-{
-	asm volatile("wrmsr"
-			     : /* no outputs */
-			     : "c"(msr), "a"(lo), "d"(hi));
-}
-
-static inline void wrmsrl(unsigned int msr, __u64 val)
-{
-	wrmsr(msr, (__u32) (val & 0xffffffffULL), (__u32) (val >> 32));
-}
-
-static inline void writefs(__uptr fs)
-{
-	wrmsrl(X86_MSR_FS_BASE, fs);
-}
-
-static inline __uptr readfs(void)
-{
-	return rdmsrl(X86_MSR_FS_BASE);
-}
-
-static inline void writegs(__uptr gs)
-{
-	wrmsrl(X86_MSR_GS_BASE, gs);
-}
-
-static inline __uptr readgs(void)
-{
-	return rdmsrl(X86_MSR_GS_BASE);
-}
-#endif
-
-UK_LLSYSCALL_R_U_DEFINE(long, arch_prctl, long, code, long, addr, long, arg2)
+UK_LLSYSCALL_R_E_DEFINE(long, arch_prctl, long, code, long, addr, long, arg2)
 {
 	switch(code) {
 		case ARCH_SET_GS:
 			uk_pr_debug("arch_prctl option SET_GS(%p)\n",
 				    (void *) addr);
-			ukarch_sysregs_set_gs_base(&usc->sysregs, (__uptr)addr);
+			ukarch_sysctx_set_gsbase(&execenv->sysctx,
+						  (__uptr)addr);
 			return 0;
 
 		case ARCH_SET_FS:
 			uk_pr_debug("arch_prctl option SET_FS(%p)\n",
 				    (void *) addr);
-			ukarch_sysregs_set_tlsp(&usc->sysregs, (__uptr)addr);
+			ukarch_sysctx_set_tlsp(&execenv->sysctx,
+					       (__uptr)addr);
 			return 0;
 
 		case ARCH_GET_GS: {
@@ -131,7 +77,7 @@ UK_LLSYSCALL_R_U_DEFINE(long, arch_prctl, long, code, long, addr, long, arg2)
 			if (!addr)
 				return -EINVAL;
 			*((long *)addr) =
-				      ukarch_sysregs_get_gs_base(&usc->sysregs);
+				    ukarch_sysctx_get_gsbase(&execenv->sysctx);
 			return 0;
 		}
 
@@ -141,7 +87,7 @@ UK_LLSYSCALL_R_U_DEFINE(long, arch_prctl, long, code, long, addr, long, arg2)
 			if (!addr)
 				return -EINVAL;
 			*((long *)addr) =
-					 ukarch_sysregs_get_tlsp(&usc->sysregs);
+				       ukarch_sysctx_get_tlsp(&execenv->sysctx);
 			return 0;
 		}
 
