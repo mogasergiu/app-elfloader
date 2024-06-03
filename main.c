@@ -48,9 +48,9 @@
 #endif /* CONFIG_LIBPOSIX_PROCESS */
 #include <uk/thread.h>
 #include <uk/sched.h>
-#if CONFIG_LIBUKSWRAND
-#include <uk/swrand.h>
-#endif /* CONFIG_LIBUKSWRAND */
+#if CONFIG_LIBUKRANDOM
+#include <uk/random.h>
+#endif /* CONFIG_LIBUKRANDOM */
 #if CONFIG_APPELFLOADER_VFSEXEC_ENVPATH
 #include <uk/argparse.h>
 #include <uk/streambuf.h>
@@ -347,14 +347,14 @@ int main(int argc, char *argv[])
 	/*
 	 * Initialize application thread
 	 */
-#if CONFIG_LIBUKSWRAND
-	uk_swrand_fill_buffer(rand, sizeof(rand));
-#else /* !CONFIG_LIBUKSWRAND */
+#if CONFIG_LIBUKRANDOM
+	uk_random_fill_buffer(rand, sizeof(rand));
+#else /* !CONFIG_LIBUKRANDOM */
 	/* Without random numbers, use a hardcoded seed */
 	uk_pr_warn("%s: Using hard-coded random seed\n", progname);
 	rand[0] = 0xB0B0;
 	rand[1] = 0xF00D;
-#endif /* !CONFIG_LIBUKSWRAND */
+#endif /* !CONFIG_LIBUKRANDOM */
 
 	uk_pr_debug("%s: Prepare application thread...\n", progname);
 	elf_ctx_init(&app_thread->ctx, prog, progname,
