@@ -519,19 +519,27 @@ static int do_elf_load_fdphdr_not0(struct elf_prog *elf_prog,
 	/* mmap with all flags. If protections are enabled, these will
 	 * be manually re-adjusted later.
 	 */
-	vastart = (uintptr_t)mmap(addr, phdr->p_filesz + delta_p_offset,
-				  get_phdr_mmap_prot(phdr),
-				  MAP_FIXED | MAP_PRIVATE,
-				  fd, phdr->p_offset - delta_p_offset);
-	if (unlikely(vastart == (uintptr_t)MAP_FAILED)) {
-		uk_pr_err("Failed to mmap the phdr at offset %lu\n",
-			  phdr->p_offset);
-		return (int)vastart;
+	if (phdr->p_filesz) {
+		vastart = (uintptr_t)mmap(addr, phdr->p_filesz + delta_p_offset,
+					  get_phdr_mmap_prot(phdr),
+					  MAP_FIXED | MAP_PRIVATE,
+					  fd, phdr->p_offset - delta_p_offset);
+		if (unlikely(vastart == (uintptr_t)MAP_FAILED)) {
+			uk_pr_err("Failed to mmap the phdr at offset %lu\n",
+				  phdr->p_offset);
+			return (int)vastart;
+		}
+
+		vastart += phdr->p_filesz + delta_p_offset;
+		vaend = PAGE_ALIGN_UP(vastart +
+				      (phdr->p_memsz - phdr->p_filesz));
+	} else {
+		vastart = (uintptr_t)addr;
+		vaend = PAGE_ALIGN_UP(vastart + phdr->p_memsz +
+				      delta_p_offset);
 	}
 
 	/* mmap anonymously what we are left if memsz > filesz */
-	vastart += phdr->p_filesz + delta_p_offset;
-	vaend = PAGE_ALIGN_UP(vastart + (phdr->p_memsz - phdr->p_filesz));
 	if (vaend > vastart) {
 		rc = elf_load_mmap_filesz_memsz_diff(elf_prog, phdr,
 						     vastart, vaend);
